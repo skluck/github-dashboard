@@ -83,7 +83,7 @@ new Vue({
     methods: {
         populateDefaultRepos: function(max_gh, max_ghe) {
             for (let i = 0; i < max_gh; i++) {
-                if (!Array.isArray(this.github_repos[i])) {
+                if (!this.github_repos[i]) {
                     this.github_repos[i] = {url: '', visible: true, owner: '', repo: ''};
                 } else {
                     if (!this.github_repos[i].hasOwnProperty('url')) this.github_repos[i].url = '';
@@ -94,7 +94,7 @@ new Vue({
             }
 
             for (let i = 0; i < max_ghe; i++) {
-                if (!Array.isArray(this.enterprise_repos[i])) {
+                if (!this.enterprise_repos[i]) {
                     this.enterprise_repos[i] = {url: '', visible: true, owner: '', repo: ''};
                 } else {
                     if (!this.enterprise_repos[i].hasOwnProperty('url')) this.enterprise_repos[i].url = '';
@@ -135,6 +135,8 @@ new Vue({
 
             this.projects = [];
             let project_promises = [];
+
+            return;
 
             // Grab github.com repos
             for (meta of this.github_repos) {
