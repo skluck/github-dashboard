@@ -54,9 +54,7 @@ new Vue({
         enterprise_repos: [],
 
         milestones: [],
-        projects: [],
-
-        error_alert: ''
+        projects: []
     },
     created: function() {
         let enterprise_url = store.get('enterprise_url');
@@ -135,8 +133,6 @@ new Vue({
 
             this.projects = [];
             let project_promises = [];
-
-            return;
 
             // Grab github.com repos
             for (meta of this.github_repos) {
@@ -236,11 +232,9 @@ new Vue({
             meta = this.findMeta(project.url);
             if (!meta) return;
 
-            this.projects = this.projects.concat({
-                owner: meta ? meta.owner : null,
-                repo: meta ? meta.repo : null,
-                p: project
-            });
+            var p = this.buildProject(meta, project);
+
+            this.projects = this.projects.concat(p);
         },
         addMilestone: function(meta, milestone) {
             meta = this.findMeta(milestone.url);
@@ -272,6 +266,15 @@ new Vue({
             this.milestones = this.milestones.concat(m);
         },
 
+        buildProject: function(meta, project) {
+            return {
+                owner: meta ? meta.owner : null,
+                repo: meta ? meta.repo : null,
+                p: project,
+                cards: [],
+                visible: true
+            };
+        },
         buildMilestone: function(meta, milestone) {
             return {
                 owner: meta ? meta.owner : null,
@@ -306,8 +309,8 @@ new Vue({
         },
 
         // Used from templates
-        repoEnabled: function(milestone) {
-            let meta = this.findMeta(milestone.url);
+        repoEnabled: function(itemURL) {
+            let meta = this.findMeta(itemURL);
             if (meta) {
                 return meta.visible;
             }
@@ -320,6 +323,9 @@ new Vue({
             } else {
                 this.enterprise_repos[i].visible = !this.enterprise_repos[i].visible;
             }
+        },
+        toggleProject: function(i) {
+            this.projects[i].visible = !this.projects[i].visible;
         },
         toggleMilestone: function(i) {
             this.milestones[i].visible = !this.milestones[i].visible;
