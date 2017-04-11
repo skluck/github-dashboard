@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+        <title>GitHub Milestones</title>
+
+
+        <link rel="stylesheet" href="https://unpkg.com/semantic-ui@2.2.9/dist/semantic.min.css"/>
+
+        <link rel="subresource" href="https://unpkg.com/jquery@3.1.0/dist/jquery.min.js"/>
+        <link rel="subresource" href="https://unpkg.com/semantic-ui@2.2.9/dist/semantic.min.js"/>
+        <link rel="subresource" href="https://unpkg.com/vue@2.2.6/dist/vue.js"/>
+        <link rel="subresource" href="https://unpkg.com/github-api/dist/GitHub.bundle.min.js"/>
+        <link rel="subresource" href="https://unpkg.com/store@2.0.4/dist/store.modern.min.js"/>
+        <link rel="subresource" href="app.js"/>
+
+        <script>
+            [
+                'https://unpkg.com/jquery@3.1.0/dist/jquery.min.js',
+                'https://cdn.jsdelivr.net/semantic-ui/2.2.9/semantic.min.js',
+                'https://unpkg.com/vue@2.2.6/dist/vue.js',
+                'https://unpkg.com/github-api@3.0.0/dist/GitHub.bundle.min.js',
+                'https://unpkg.com/store@2.0.4/dist/store.modern.min.js',
+                'app.js'
+            ].forEach(function(src) {
+                var script = document.createElement('script');
+                script.src = src;
+                script.async = false;
+                document.head.appendChild(script);
+            });
+        </script>
+
+        <style>
+            body {background-color: #f4f7f7; }
+
+            .mt-2 { margin-top: .2em; }
+
+            .ui.fluid.vertical.menu { height: 100vh }
+            .twelve.column { margin-bottom: 2em; margin-top: 2em; }
+        </style>
+    </head>
+
+    <body>
+        <div id="vue-application" class="ui grid">
+
+            <div class="ui four wide column">
+                <div class="ui fluid vertical inverted menu">
+                    <div class="item">
+                        <div class="ui buttons">
+
+                            <button type="button" class="ui blue button" @click="loadMilestones">
+                                <i class="refresh icon"></i> Milestones
+                            </button>
+                            <div class="or"></div>
+                            <button type="button" class="ui orange button" @click="loadProjects">
+                                <i class="refresh icon"></i> Projects
+                            </button>
+
+                        </div>
+                    </div>
+
+                    <div class="item">
+                        <div class="header">Enterprise Repositories</div>
+
+                        <div class="ui mini input">
+                            <input type="text" v-model="enterprise_base_url" placeholder="https://enterprise-url/api/v3">
+                        </div>
+
+                        <div class="menu">
+                            <template v-for="(r, i) in enterprise_repos">
+                                <div class="item">
+                                    <div class="ui left action input">
+                                        <button class="ui icon button"
+                                            v-bind:class="{ green: r.visible }" @click="toggleRepo('ghe', i)"
+                                        ><i class="toggle icon" v-bind:class="{ on: r.visible, off: !r.visible }"></i>
+                                        </button>
+
+                                        <input type="text" v-model="r.url" placeholder="owner/repo">
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="item">
+                        <div class="header">GitHub.com Repositories</div>
+                        <label>({{ github_base_url }})</label>
+
+                        <div class="ui list">
+                            <template v-for="(r, i) in github_repos">
+                                <div class="item">
+                                    <div class="ui left action input">
+                                        <button class="ui icon button"
+                                            v-bind:class="{ green: r.visible }" @click="toggleRepo('gh', i)"
+                                        ><i class="toggle icon" v-bind:class="{ on: r.visible, off: !r.visible }"></i>
+                                        </button>
+
+                                        <input type="text" v-model="r.url" placeholder="owner/repo">
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ui twelve wide column">
+                <div class="ui container">
+                    <div v-html="error_alert" v-if="error_alert"></div>
+
+                    <h1 class="ui header">
+                        <i class="github icon"></i>
+                        <div class="content">
+                            GitHub Milestones
+                            <div class="sub header">A combined dashboard of milestones from multiple repos.</div>
+                        </div>
+                    </h1>
+
+                    <template v-if="milestones.length > 0">
+
+                        <div class="ui divider"></div>
+
+                        <template v-for="(milestone, i) in milestones">
+
+
+                            <div v-if="repoEnabled(milestone.m)" class="ui segments" >
+                                <div class="ui top attached block header">
+
+                                    <div class="ui items">
+                                        <div class="item">
+
+                                            <h3>
+                                                <button class="mini ui icon button"
+                                                    v-bind:class="{ green: milestone.visible }" @click="toggleMilestone(i)"
+                                                ><i class="toggle icon" v-bind:class="{ on: milestone.visible, off: !milestone.visible }"></i>
+                                                </button>
+
+                                                <div class="ui basic label">{{ milestone.repo }}</div>
+
+                                                <a :href="milestone.m.html_url">{{ milestone.m.title }}</a>
+                                            </h3>
+
+                                            <div class="content">
+
+                                                <div class="ui right floated">
+                                                    <span class="ui tiny basic label"><i class="clock icon"></i>{{ milestone.m.due_on|local_date }}</span>
+
+                                                    <template v-if="milestone.m.state == 'open'">
+                                                        <div class="ui green horizontal label">open</div>
+                                                    </template>
+                                                    <template v-else>
+                                                        <div class="ui red horizontal label">closed</div>
+                                                    </template>
+
+                                                    <a :href="milestone.m.url" class="ui right floated"><i class="terminal icon"></i></a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ui clearing segment">
+                                    <div class="ui horizontal label">{{ milestone.m.closed_issues }} / {{ milestone.m.closed_issues + milestone.m.open_issues }}</div>
+                                    <template v-if="milestone.m.open_issues">
+                                        <div class="ui orange horizontal label">{{ milestone.m.open_issues }} remaining</div>
+                                    </template>
+
+                                    <template v-if="milestone.issues">
+
+                                        <template v-if="milestone.visible">
+                                            <div class="ui relaxed divided list">
+                                                <template v-for="issue in milestone.issues">
+                                                    <div class="item">
+                                                        <div class="right floated content">
+                                                            <a :href="issue.url"><i class="terminal icon"></i></a>
+                                                        </div>
+                                                        <div class="content">
+                                                            <h4 class="header">
+                                                                <template v-if="issue.state == 'open'">
+                                                                    <div class="ui green horizontal label">open</div>
+                                                                </template>
+                                                                <template v-else>
+                                                                    <div class="ui red horizontal label">closed</div>
+                                                                </template>
+
+                                                                <a :href="html_url">{{ issue.title }}</a>
+                                                            </h4>
+
+                                                            <div class="description mt-2">
+                                                                <template v-for="label in issue.labels">
+                                                                    <div class="ui horizontal label" v-bind:style="{ backgroundColor: '#' + label.color }">{{ label.name }}</div>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template v-else>
+                                            {{ milestone.issues.length }} issues are hidden.
+                                        </template>
+
+                                    </template>
+                                    <template v-else>
+                                        This milestone has no issues.
+                                    </template>
+
+                                </div>
+                            </div>
+                        </template>
+                    </template>
+
+                    <template v-else>
+
+                        <div class="ui error message">
+                            <h3 class="header">No milestones found.</h3>
+                        </div>
+
+                    </template>
+                </div>
+            </div>
+
+        </div>
+    </body>
+</html>
