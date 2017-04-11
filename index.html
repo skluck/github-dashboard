@@ -204,7 +204,8 @@
                                         </template>
 
                                         <template v-else>
-                                            {{ milestone.issues.length }} issues are hidden.
+                                            <b v-if="milestone.issues.length == 1">1 issue is hidden.</b>
+                                            <b v-else>{{ milestone.issues.length }} issues are hidden.</b>
                                         </template>
 
                                     </template>
