@@ -37,6 +37,7 @@
             .mt-2 { margin-top: .2em; }
             .ml-5 { margin-left: 4em; }
             .mb-0 { margin-bottom: 0; }
+            .app-content { width: calc(100% - 260px); padding: 1em; }
 
             .ui.fluid.vertical.menu { height: 100vh }
             .twelve.column { margin-bottom: 2em; margin-top: 2em; }
@@ -117,7 +118,7 @@
                 </div>
             </div>
 
-            <div class="pusher" style="width: calc(100% - 280px);">
+            <div class="pusher app-content">
                 <div v-html="error_alert" v-if="error_alert"></div>
 
                 <h1 class="ui header">
@@ -230,7 +231,7 @@
                 <template v-else>
 
                     <div class="ui error message">
-                        <h3 class="header">No milestones found.</h3>
+                        <h3 class="header">No milestones loaded.</h3>
                     </div>
 
                 </template>
