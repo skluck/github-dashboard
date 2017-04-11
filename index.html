@@ -36,6 +36,7 @@
             body {background-color: #f4f7f7; }
 
             .mt-2 { margin-top: .2em; }
+            .ml-5 { margin-left: 4em; }
 
             .ui.fluid.vertical.menu { height: 100vh }
             .twelve.column { margin-bottom: 2em; margin-top: 2em; }
@@ -170,6 +171,9 @@
                                     <template v-if="milestone.issues">
 
                                         <template v-if="milestone.visible">
+
+                                            <div class="ui divider"></div>
+
                                             <div class="ui relaxed divided list">
                                                 <template v-for="issue in milestone.issues">
                                                     <div class="item">
@@ -188,7 +192,7 @@
                                                                 <a :href="issue.html_url">{{ issue.title }}</a>
                                                             </h4>
 
-                                                            <div class="description mt-2">
+                                                            <div class="description mt-2 ml-5">
                                                                 <template v-for="label in issue.labels">
                                                                     <div class="ui horizontal label" v-bind:style="{ backgroundColor: '#' + label.color }">{{ label.name }}</div>
                                                                 </template>
