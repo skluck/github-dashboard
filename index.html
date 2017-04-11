@@ -119,8 +119,6 @@
             </div>
 
             <div class="pusher app-content">
-                <div v-html="error_alert" v-if="error_alert"></div>
-
                 <h1 class="ui header">
                     <i class="github icon"></i>
                     <div class="content">
@@ -129,14 +127,56 @@
                     </div>
                 </h1>
 
-                <template v-if="milestones.length > 0">
+                <template v-if="projects.length">
 
-                    <div class="ui divider"></div>
+                    <template v-for="(project, i) in projects">
+                        <div v-if="repoEnabled(project.p.url)" class="ui segments" >
+                            <div class="ui top attached block header">
+
+                                <div class="ui items">
+                                    <div class="item">
+
+                                        <h3 class="mb-0">
+                                            <button class="mini ui icon button"
+                                                v-bind:class="{ green: project.visible }" @click="toggleProject(i)"
+                                            ><i class="toggle icon" v-bind:class="{ on: project.visible, off: !project.visible }"></i>
+                                            </button>
+
+                                            <div class="ui basic label">{{ project.repo }}</div>
+
+                                            <a :href="project.p.html_url">#{{ project.p.number }} - {{ project.p.name }}</a>
+                                        </h3>
+
+                                        <div class="content">
+
+                                            <div class="ui right floated">
+                                                <span class="ui tiny basic label"><i class="clock icon"></i>Updated: {{ project.p.updated_at|local_date }}</span>
+
+                                                <template v-if="project.p.state == 'open'">
+                                                    <div class="ui green horizontal label">open</div>
+                                                </template>
+                                                <template v-else>
+                                                    <div class="ui red horizontal label">closed</div>
+                                                </template>
+
+                                                <a :href="project.p.url" class="ui right floated"><i class="terminal icon"></i></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </template>
+                </template>
+
+                <template v-else-if="milestones.length">
 
                     <template v-for="(milestone, i) in milestones">
 
 
-                        <div v-if="repoEnabled(milestone.m)" class="ui segments" >
+                        <div v-if="repoEnabled(milestone.m.url)" class="ui segments" >
                             <div class="ui top attached block header">
 
                                 <div class="ui items">
@@ -150,13 +190,13 @@
 
                                             <div class="ui basic label">{{ milestone.repo }}</div>
 
-                                            <a :href="milestone.m.html_url">{{ milestone.m.title }}</a>
+                                            <a :href="milestone.m.html_url">#{{ milestone.m.number }} - {{ milestone.m.title }}</a>
                                         </h3>
 
                                         <div class="content">
 
                                             <div class="ui right floated">
-                                                <span class="ui tiny basic label"><i class="clock icon"></i>{{ milestone.m.due_on|local_date }}</span>
+                                                <span class="ui tiny basic label"><i class="clock icon"></i>Due: {{ milestone.m.due_on|local_date }}</span>
 
                                                 <template v-if="milestone.m.state == 'open'">
                                                     <div class="ui green horizontal label">open</div>
@@ -178,7 +218,7 @@
                                     <div class="ui orange horizontal label">{{ milestone.m.open_issues }} remaining</div>
                                 </template>
 
-                                <template v-if="milestone.issues">
+                                <template v-if="milestone.issues.length">
 
                                     <template v-if="milestone.visible">
 
@@ -220,7 +260,7 @@
 
                                 </template>
                                 <template v-else>
-                                    This milestone has no issues.
+                                    <b>This milestone has no issues.</b>
                                 </template>
 
                             </div>
@@ -231,7 +271,7 @@
                 <template v-else>
 
                     <div class="ui error message">
-                        <h3 class="header">No milestones loaded.</h3>
+                        <h3 class="header">No milestones or projects loaded.</h3>
                     </div>
 
                 </template>
