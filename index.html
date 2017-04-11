@@ -6,7 +6,6 @@
 
         <title>GitHub Milestones</title>
 
-
         <link rel="stylesheet" href="https://unpkg.com/semantic-ui@2.2.9/dist/semantic.min.css"/>
 
         <link rel="subresource" href="https://unpkg.com/jquery@3.1.0/dist/jquery.min.js"/>
@@ -37,6 +36,7 @@
 
             .mt-2 { margin-top: .2em; }
             .ml-5 { margin-left: 4em; }
+            .mb-0 { margin-bottom: 0; }
 
             .ui.fluid.vertical.menu { height: 100vh }
             .twelve.column { margin-bottom: 2em; margin-top: 2em; }
@@ -132,7 +132,7 @@
                                     <div class="ui items">
                                         <div class="item">
 
-                                            <h3>
+                                            <h3 class="mb-0">
                                                 <button class="mini ui icon button"
                                                     v-bind:class="{ green: milestone.visible }" @click="toggleMilestone(i)"
                                                 ><i class="toggle icon" v-bind:class="{ on: milestone.visible, off: !milestone.visible }"></i>
