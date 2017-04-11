@@ -94,7 +94,7 @@ new Vue({
             }
 
             for (let i = 0; i < max_ghe; i++) {
-                if (undefined === this.github_repos[i]) {
+                if (undefined === this.enterprise_repos[i]) {
                     this.enterprise_repos[i] = {url: '', visible: true, owner: '', repo: ''};
                 } else {
                     if (!this.enterprise_repos[i].hasOwnProperty('url')) this.enterprise_repos[i].url = '';
