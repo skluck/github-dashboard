@@ -35,9 +35,10 @@
             body {background-color: #f4f7f7; }
 
             .mt-2 { margin-top: .2em; }
-            .ml-5 { margin-left: 4em; }
+            .ml-4 { margin-left: 2em; }
             .mb-0 { margin-bottom: 0; }
             .app-content { width: calc(100% - 260px); padding: 1em; }
+            .app-issues img { margin-bottom:-3px; }
 
             .ui.fluid.vertical.menu { height: 100vh }
             .twelve.column { margin-bottom: 2em; margin-top: 2em; }
@@ -175,7 +176,6 @@
 
                     <template v-for="(milestone, i) in milestones">
 
-
                         <div v-if="repoEnabled(milestone.m.url)" class="ui segments" >
                             <div class="ui top attached block header">
 
@@ -224,7 +224,7 @@
 
                                         <div class="ui divider"></div>
 
-                                        <div class="ui relaxed divided list">
+                                        <div class="ui relaxed divided list app-issues">
                                             <template v-for="issue in milestone.issues">
                                                 <div class="item">
                                                     <div class="right floated content">
@@ -232,19 +232,22 @@
                                                     </div>
                                                     <div class="content">
                                                         <h4 class="header">
-                                                            <template v-if="issue.state == 'open'">
-                                                                <div class="ui green horizontal label">open</div>
-                                                            </template>
-                                                            <template v-else>
-                                                                <div class="ui red horizontal label">closed</div>
-                                                            </template>
+                                                            <i class="square icon" v-bind:class="issue.state == 'open' ? 'green outline' : 'red'"></i>
 
-                                                            <a :href="issue.html_url">{{ issue.title }}</a>
+                                                            <a :href="issue.html_url">#{{ issue.number }} - {{ issue.title }}</a>
+                                                            <span>
+                                                                <template v-for="assignee in issue.assignees">
+                                                                    <img height="15" width="15" :src="assignee.avatar_url + 's=15'" :alt="assignee.login">
+                                                                </template>
+                                                            </span>
                                                         </h4>
 
-                                                        <div class="description mt-2 ml-5">
+                                                        <div class="ui description mt-2 ml-4 horizontal small labels">
+                                                            <span class="ui basic label"><i class="comment icon" v-bind:class="{ outline: !issue.comments }"></i> {{ issue.comments }}</span>
+                                                            <span class="ui basic label"><i class="clock icon" v-bind:class="{ orange: isRecent(issue.updated_at) }"></i>{{ issue.updated_at|local_date }}</span>
+
                                                             <template v-for="label in issue.labels">
-                                                                <div class="ui horizontal label" v-bind:style="{ backgroundColor: '#' + label.color }">{{ label.name }}</div>
+                                                                <span :href="label.url" class="ui label" v-bind:style="{ backgroundColor: '#' + label.color }">{{ label.name }}</span>
                                                             </template>
                                                         </div>
                                                     </div>
