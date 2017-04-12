@@ -38,10 +38,14 @@ Vue.filter('local_date', $.local_date);
 let oldest = new Date();
 oldest.setDate(oldest.getDate() - 30);
 
+let recent = new Date();
+recent.setDate(recent.getDate() - 3);
+
 new Vue({
     el: '#vue-application',
     data: {
         oldest: oldest,
+        recent: recent,
 
         github_base_url: 'https://api.github.com',
         enterprise_base_url: '',
@@ -232,6 +236,7 @@ new Vue({
             meta = this.findMeta(project.url);
             if (!meta) return;
 
+            console.log(project);
             var p = this.buildProject(meta, project);
 
             this.projects = this.projects.concat(p);
@@ -309,6 +314,12 @@ new Vue({
         },
 
         // Used from templates
+
+        isRecent: function(d) {
+            let dTime = new Date(d);
+            return (this.recent.getTime() < dTime.getTime());
+        },
+
         repoEnabled: function(itemURL) {
             let meta = this.findMeta(itemURL);
             if (meta) {
