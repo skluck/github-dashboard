@@ -116,7 +116,11 @@ new Vue({
             this.ghe = new GitHub({/*token: 'MY_OAUTH_TOKEN'*/}, this.enterprise_base_url);
 
             for (i in this.github_repos) {
-                if (this.github_repos[i].url.length == 0) continue;
+                if (this.github_repos[i].url.length == 0) {
+                    this.github_repos[i].owner = '';
+                    this.github_repos[i].repo = '';
+                    continue;
+                }
 
                 let [owner, repo] = this.github_repos[i].url.split(/\//);
                 this.github_repos[i].owner = owner;
@@ -124,7 +128,11 @@ new Vue({
             }
 
             for (i in this.enterprise_repos) {
-                if (this.enterprise_repos[i].url.length == 0) continue;
+                if (this.enterprise_repos[i].url.length == 0) {
+                    this.enterprise_repos[i].owner = '';
+                    this.enterprise_repos[i].repo = '';
+                    continue;
+                }
 
                 let [owner, repo] = this.enterprise_repos[i].url.split(/\//);
                 this.enterprise_repos[i].owner = owner;
@@ -236,7 +244,6 @@ new Vue({
             meta = this.findMeta(project.url);
             if (!meta) return;
 
-            console.log(project);
             var p = this.buildProject(meta, project);
 
             this.projects = this.projects.concat(p);
@@ -248,25 +255,23 @@ new Vue({
             let milestoneTime = new Date(milestone.due_on).getTime();
             if (this.oldest.getTime() > milestoneTime) return;
 
+            let self = this;
 
             // Get issues
-            if (this.isGH(milestone.url)) {
-                var gh = this.gh;
-            } else {
-                var gh = this.ghe;
-            }
+            let ghClient = (this.isGH(milestone.url)) ? this.gh : this.ghe;
+            let m = this.buildMilestone(meta, milestone);
+            let i = this.milestones.length;
 
-            var m = this.buildMilestone(meta, milestone);
-
-            gh.getIssues(meta.owner, meta.repo)
-            .listIssues({
-                milestone: milestone.number,
-                state: 'all',
-                sort: 'updated',
-                direction: 'desc'
-            }).then(function(response) {
-                m.issues = response.data;
-            });
+            ghClient
+                .getIssues(meta.owner, meta.repo)
+                .listIssues({
+                    milestone: milestone.number,
+                    state: 'all',
+                    sort: 'updated',
+                    direction: 'desc'
+                }).then(function(response) {
+                    self.milestones[i].issues = response.data;
+                });
 
             this.milestones = this.milestones.concat(m);
         },
@@ -296,6 +301,8 @@ new Vue({
         findMeta: function(url) {
             if (this.isGH(url)) {
                 for (i in this.github_repos) {
+                    if (this.github_repos[i].url.length === 0) continue;
+
                     if (url.includes(this.github_repos[i].url)) {
                         return this.github_repos[i];
                     }
@@ -304,6 +311,8 @@ new Vue({
                 return null;
             } else {
                 for (i in this.enterprise_repos) {
+                    if (this.enterprise_repos[i].url.length === 0) continue;
+
                     if (url.includes(this.enterprise_repos[i].url)) {
                         return this.enterprise_repos[i];
                     }
