@@ -260,7 +260,6 @@ new Vue({
             // Get issues
             let ghClient = (this.isGH(milestone.url)) ? this.gh : this.ghe;
             let m = this.buildMilestone(meta, milestone);
-            let i = this.milestones.length;
 
             ghClient
                 .getIssues(meta.owner, meta.repo)
@@ -270,7 +269,7 @@ new Vue({
                     sort: 'updated',
                     direction: 'desc'
                 }).then(function(response) {
-                    self.milestones[i].issues = response.data;
+                    m.issues = response.data;
                 });
 
             this.milestones = this.milestones.concat(m);
