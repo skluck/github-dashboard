@@ -52,13 +52,14 @@ new Vue({
 
         gh: null,
         ghe: null,
-        default_max: 4,
+        default_max: 6,
 
         github_repos: [],
         enterprise_repos: [],
 
         milestones: [],
-        projects: []
+        projects: [],
+        pullrequests: [],
     },
     created: function() {
         let enterprise_url = store.get('enterprise_url');
@@ -169,6 +170,7 @@ new Vue({
         },
         loadMilestones: function() {
             this.load();
+            this.loadPullRequests();
 
             this.milestones = [];
             let milestone_promises = [];
@@ -193,6 +195,31 @@ new Vue({
 
             // Resolve promises
             this.resolveMilestones(milestone_promises);
+        },
+        loadPullRequests: function() {
+            this.pullrequests = [];
+            let pr_promises = [];
+
+            // Grab github.com repos
+            for (meta of this.github_repos) {
+                if (meta.owner.length == 0 || meta.repo.length == 0) continue;
+
+                let ghRepo = this.gh.getRepo(meta.owner, meta.repo);
+                pr_promises.push(ghRepo.listPullRequests({state: 'open'}));
+            }
+
+            // Grab github enterprise repos
+            if (this.enterprise_base_url) {
+                for (meta of this.enterprise_repos) {
+                    if (meta.owner.length == 0 || meta.repo.length == 0) continue;
+
+                    let ghRepo = this.ghe.getRepo(meta.owner, meta.repo);
+                    pr_promises.push(ghRepo.listPullRequests({state: 'open'}));
+                }
+            }
+
+            // Resolve promises
+            this.resolvePullRequests(pr_promises);
         },
 
         resolveProjects: function(promises) {
@@ -240,6 +267,34 @@ new Vue({
                 });
             });
         },
+        resolvePullRequests: function(promises) {
+            let self = this;
+
+            $.combinator(promises)
+            .then(function(responses) {
+                responses.forEach(function(response) {
+                    let prs = response.data;
+
+                    if (!Array.isArray(response.data)) {
+                        prs = [prs];
+                    }
+
+                    for (let pr of prs) {
+                        meta = self.findMeta(pr.url);
+                        self.addPullRequest(meta, pr);
+                    }
+                });
+
+                self.pullrequests = self.pullrequests.sort(function(a, b) {
+                    let aUpdated = new Date(a.pr.updated_at).getTime();
+                    let bUpdated = new Date(b.pr.updated_at).getTime();
+
+                    if (aUpdated < bUpdated) return -1;
+                    if (aUpdated > bUpdated) return 1;
+                    return 0;
+                });
+            });
+        },
         addProject: function(meta, project) {
             meta = this.findMeta(project.url);
             if (!meta) return;
@@ -274,6 +329,16 @@ new Vue({
 
             this.milestones = this.milestones.concat(m);
         },
+        addPullRequest: function(meta, pr) {
+            meta = this.findMeta(pr.url);
+            if (!meta) return;
+
+            let prTime = new Date(pr.updated_at).getTime();
+            if (this.oldest.getTime() > prTime) return;
+
+            var p = this.buildPR(meta, pr);
+            this.pullrequests = this.pullrequests.concat(p);
+        },
 
         buildProject: function(meta, project) {
             return {
@@ -290,6 +355,15 @@ new Vue({
                 repo: meta ? meta.repo : null,
                 m: milestone,
                 issues: [],
+                visible: true
+            };
+        },
+        buildPR: function(meta, pr) {
+            return {
+                owner: meta ? meta.owner : null,
+                repo: meta ? meta.repo : null,
+                pr: pr,
+                total_comments: parseInt(pr.comments) + parseInt(pr.review_comments),
                 visible: true
             };
         },
