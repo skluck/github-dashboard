@@ -128,6 +128,50 @@
                     </div>
                 </h1>
 
+                <template v-if="pullrequests.length">
+
+                    <div class="ui segments" >
+                        <div class="ui top attached block header">
+
+                            <div class="ui items">
+                                <div class="item">
+                                    <h3 class="mb-0">Pull Requests</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ui clearing segment">
+                            <div class="ui relaxed divided list app-issues">
+                                <template v-for="(pr, i) in pullrequests">
+                                    <div class="item">
+                                        <div class="right floated content">
+                                            <a :href="pr.pr.url"><i class="terminal icon"></i></a>
+                                        </div>
+                                        <div class="content">
+                                            <h4 class="header">
+                                                <i class="square icon" v-bind:class="pr.pr.state == 'open' ? 'green outline' : 'red'"></i>
+
+                                                <a :href="pr.pr.html_url">#{{ pr.pr.number }} - {{ pr.pr.title }}</a>
+                                                <span>
+                                                    <img height="15" width="15" :src="pr.pr.user.avatar_url + 's=15'" :alt="pr.pr.user.login">
+                                                </span>
+                                            </h4>
+
+                                            <div class="ui description mt-2 ml-4 horizontal small labels">
+                                                <span class="ui basic label"><i class="comment icon" v-bind:class="{ outline: !pr.total_comments }"></i> ?</span>
+                                                <span class="ui basic label"><i class="clock icon" v-bind:class="{ orange: isRecent(pr.pr.updated_at) }"></i>{{ pr.pr.updated_at|local_date }}</span>
+
+                                                <span class="ui grey label">{{ pr.pr.base.repo.full_name }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                </template>
+
                 <template v-if="projects.length">
 
                     <template v-for="(project, i) in projects">
@@ -167,7 +211,6 @@
                                 </div>
                             </div>
                         </div>
-
 
                     </template>
                 </template>
