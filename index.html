@@ -11,7 +11,7 @@
         <link rel="subresource" href="https://unpkg.com/jquery@3.1.0/dist/jquery.min.js"/>
         <link rel="subresource" href="https://unpkg.com/semantic-ui@2.2.9/dist/semantic.min.js"/>
         <link rel="subresource" href="https://unpkg.com/vue@2.2.6/dist/vue.js"/>
-        <link rel="subresource" href="https://unpkg.com/github-api/dist/GitHub.bundle.min.js"/>
+        <link rel="subresource" href="https://unpkg.com/github-api@3.0.0/dist/GitHub.bundle.min.js"/>
         <link rel="subresource" href="https://unpkg.com/store@2.0.4/dist/store.modern.min.js"/>
         <link rel="subresource" href="app.js"/>
 
@@ -34,14 +34,23 @@
         <style>
             body {background-color: #f4f7f7; }
 
-            .mt-2 { margin-top: .2em; }
-            .ml-4 { margin-left: 2em; }
-            .mb-0 { margin-bottom: 0; }
+            .mt-2 { margin-top: .2em !important; }
+            .mt-10 { margin-top: 1em !important; }
+            .ml-4 { margin-left: 2em !important; }
+            .ml-6 { margin-left: 3em !important; }
+            .mb-0 { margin-bottom: 0 !important; }
+
             .app-content { width: calc(100% - 260px); padding: 1em; }
             .app-issues img { margin-bottom:-3px; }
 
             .ui.fluid.vertical.menu { height: 100vh }
             .twelve.column { margin-bottom: 2em; margin-top: 2em; }
+
+            .sidebar-url { margin-top:.25em; display:block; }
+
+            .clr-green { color: #21ba45; }
+            .clr-red { color: #db2828; }
+            .ui.micro.image { width: 22px; font-size: .65em; margin-top: -.35em; }
         </style>
     </head>
 
@@ -50,14 +59,18 @@
 
             <div class="ui left fixed inverted vertical visible sidebar menu">
                 <div class="item">
-                    <div class="ui tiny fluid buttons">
+                    <div class="ui">
 
-                        <button type="button" class="ui blue button" @click="loadMilestones">
-                            <i class="refresh icon"></i> Milestones
+                        <button class="fluid ui blue button" @click="loadMilestones">
+                            <i class="map signs icon"></i> Milestones
                         </button>
-                        <div class="or"></div>
-                        <button type="button" class="ui orange button" @click="loadProjects">
-                            <i class="refresh icon"></i> Projects
+
+                        <button class="fluid ui green button mt-2" @click="loadPullRequests">
+                            <i class="refresh icon"></i> Pull Requests
+                        </button>
+
+                        <button class="fluid ui orange button mt-2" @click="loadProjects">
+                            <i class="bar chart icon"></i> Projects
                         </button>
 
                     </div>
@@ -88,9 +101,14 @@
 
                 <div class="item">
                     <div class="header">GitHub.com Repositories</div>
-                    <label>({{ github_base_url }})</label>
 
-                    <div class="ui list">
+                    <div class="ui mini input">
+                        <input type="text" v-model="github_token" placeholder="Enter github.com token">
+                    </div>
+
+                    <label class="sidebar-url">({{ github_base_url }})</label>
+
+                    <div class="menu">
                         <template v-for="(r, i) in github_repos">
                             <div class="item">
                                 <div class="ui left action input">
@@ -128,59 +146,163 @@
                     </div>
                 </h1>
 
-                <template v-if="pullrequests.length">
+                <template v-if="isNothingLoaded()">
 
-                    <div class="ui segments" >
+                    <div class="ui error message">
+                        <h3 class="header">No milestones, pull requests or projects loaded.</h3>
+                        <p>
+                            Load data from GitHub using the buttons on the left sidebar.
+                        </p>
+                    </div>
+
+                </template>
+                <template v-else>
+                    <p>
+                        <button class="tiny ui basic button" @click="hideAllItems()">Collapse all items</button>
+                        <button class="tiny ui basic button" @click="clearAllItems()">Clear data</button>
+                    </p>
+                </template>
+
+                <template v-if="hasAnyPullRequests()">
+
+                    <div class="ui segments">
                         <div class="ui top attached block header">
-
-                            <div class="ui items">
-                                <div class="item">
-                                    <h3 class="mb-0">Pull Requests</h3>
-                                </div>
-                            </div>
+                            <h3 class="mb-0">Review Activity</h3>
                         </div>
 
                         <div class="ui clearing segment">
-                            <div class="ui relaxed divided list app-issues">
-                                <template v-for="(pr, i) in pullrequests">
-                                    <div class="item">
-                                        <div class="right floated content">
-                                            <a :href="pr.pr.url"><i class="terminal icon"></i></a>
+                            <div class="ui items">
+                                <div class="item" v-for="(meta, user) in reviews">
+
+                                    <div class="left floated content">
+                                        <h4 class="mb-0">{{ user }}</h4>
+                                    </div>
+
+                                    <div class="ui mini horizontal list">
+                                        <div class="item">
+                                            <span class="ui mini circular label" v-bind:class="meta.pullrequests.length > 5 ? 'green outline' : 'red'">{{ meta.pullrequests.length }}</span>
+                                            Reviews
                                         </div>
-                                        <div class="content">
-                                            <h4 class="header">
-                                                <i class="square icon" v-bind:class="pr.pr.state == 'open' ? 'green outline' : 'red'"></i>
 
-                                                <a :href="pr.pr.html_url">#{{ pr.pr.number }} - {{ pr.pr.title }}</a>
-                                                <span>
-                                                    <img height="15" width="15" :src="pr.pr.user.avatar_url + 's=15'" :alt="pr.pr.user.login">
-                                                </span>
-                                            </h4>
+                                        <div class="item">
+                                            <span class="ui mini circular label" v-bind:class="meta.approved.length > 5 ? 'green outline' : 'red'">{{ meta.approved.length }}</span>
+                                            Approved
+                                        </div>
 
-                                            <div class="ui description mt-2 ml-4 horizontal small labels">
-                                                <span class="ui basic label"><i class="comment icon" v-bind:class="{ outline: !pr.total_comments }"></i> ?</span>
-                                                <span class="ui basic label"><i class="clock icon" v-bind:class="{ orange: isRecent(pr.pr.updated_at) }"></i>{{ pr.pr.updated_at|local_date }}</span>
+                                        <div class="item">
+                                            <span class="ui mini circular label" v-bind:class="meta.changes_requested.length > 5 ? 'green outline' : 'red'">{{ meta.changes_requested.length }}</span>
+                                            Changes Requested
+                                        </div>
 
-                                                <span class="ui grey label">{{ pr.pr.base.repo.full_name }}</span>
-                                            </div>
+                                        <div class="item">
+                                            <span class="ui mini circular label" v-bind:class="meta.commented.length > 5 ? 'green outline' : 'red'">{{ meta.commented.length }}</span>
+                                            Comments
                                         </div>
                                     </div>
-                                </template>
+
+                                </div>
                             </div>
                         </div>
                     </div>
 
+                    <template v-for="(pr_meta, pr_type) in pullrequests">
+                        <div class="ui segments">
+                            <div class="ui top attached block header">
+                                <div class="ui items">
+                                    <div class="item">
+                                        <h3 class="mb-0">
+                                            <button class="mini ui icon button"
+                                                v-bind:class="{ green: pr_meta.visible }" @click="togglePullRequests(pr_type)"
+                                            ><i class="toggle icon" v-bind:class="{ on: pr_meta.visible, off: !pr_meta.visible }"></i>
+                                            </button>
+
+                                            <span>{{ pr_type == 'closed' ? 'Closed' : 'Open' }} Pull Requests</span>
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="ui clearing segment">
+
+                                <template v-if="pr_meta.pullrequests.length">
+                                    <template v-if="pr_meta.visible">
+
+                                        <div class="ui relaxed divided list app-issues">
+
+                                            <template v-for="(pr, i) in pr_meta.pullrequests">
+                                                <div class="item mt-10">
+                                                    <div class="right floated content">
+                                                        <a :href="pr.pr.url"><i class="terminal icon"></i></a>
+                                                    </div>
+                                                    <div class="content">
+                                                        <h3 class="header">
+                                                            <i class="open square icon green" v-if="pr.pr.state == 'open'"></i>
+                                                            <i class="square icon" v-else v-bind:class="pr.pr.merged ? 'purple' : 'red outline'"></i>
+
+                                                            <span class="ui grey label">{{ pr.pr.base.repo.full_name }}</span>
+
+                                                            <a :href="pr.pr.html_url">#{{ pr.pr.number }} - {{ pr.pr.title }}</a>
+                                                            <img class="ui micro avatar image" :src="pr.pr.user.avatar_url" :alt="pr.pr.user.login">
+                                                        </h3>
+
+                                                        <div class="ui description mt-2 ml-4 horizontal small labels">
+                                                            <span class="ui basic label"><i class="comment icon" v-bind:class="{ outline: !pr.pr.comments }"></i> {{ pr.pr.comments }}</span>
+                                                            <span class="ui basic label"><i class="clock icon" v-bind:class="{ orange: isRecent(pr.pr.updated_at) }"></i>{{ pr.pr.updated_at|local_date }}</span>
+
+                                                            <span class="ui circular basic green label" v-if="pr.pr.additions">+ {{ pr.pr.additions }}</span>
+                                                            <span class="ui circular basic red label" v-if="pr.pr.deletions">- {{ pr.pr.deletions }}</span> changes
+                                                            <span class="ui circular basic label">{{ pr.pr.changed_files }}</span> files
+
+                                                        </div>
+
+                                                        <div class="ui description mt-2 ml-6 mini horizontal list">
+                                                            <span class="ui circular basic green label" v-if="pr.reviews.length == 1">1 review</span>
+                                                            <span class="ui circular basic green label" v-else-if="pr.reviews.length">{{ pr.reviews.length }} reviews</span>
+                                                            <span class="ui circular basic red label" v-else>No reviews</span>
+
+                                                            <template v-for="review in pr.reviews">
+                                                                <div class="item" v-if="review.state == 'APPROVED'" :alt="review.user.login">
+                                                                    <img class="ui avatar image" :src="review.user.avatar_url">
+                                                                    <div class="middle aligned content clr-green">Approved</div>
+                                                               </div>
+
+                                                                <div class="item" v-if="review.state == 'CHANGES_REQUESTED'" :alt="review.user.login">
+                                                                    <img class="ui avatar image" :src="review.user.avatar_url">
+                                                                    <div class="middle aligned content clr-red">Changes requested</div>
+                                                               </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                        </div>
+
+                                    </template>
+
+                                    <template v-else>
+                                        <b v-if="pr_meta.pullrequests.length == 1">1 pull request is hidden.</b>
+                                        <b v-else>{{ pr_meta.pullrequests.length }} pull requests are hidden.</b>
+                                    </template>
+
+                                </template>
+                                <template v-else>
+                                    <b>No active pull requests.</b>
+                                </template>
+
+                            </div>
+                        </div>
+
+                    </template>
                 </template>
 
                 <template v-if="projects.length">
-
                     <template v-for="(project, i) in projects">
-                        <div v-if="repoEnabled(project.p.url)" class="ui segments" >
-                            <div class="ui top attached block header">
+                        <div v-if="repoEnabled(project.p.url)" class="ui segments">
 
+                            <div class="ui top attached block header">
                                 <div class="ui items">
                                     <div class="item">
-
                                         <h3 class="mb-0">
                                             <button class="mini ui icon button"
                                                 v-bind:class="{ green: project.visible }" @click="toggleProject(i)"
@@ -210,21 +332,19 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
+                        </div>
                     </template>
                 </template>
 
-                <template v-else-if="milestones.length">
+                <template v-if="milestones.length">
 
                     <template v-for="(milestone, i) in milestones">
-
                         <div v-if="repoEnabled(milestone.m.url)" class="ui segments" >
                             <div class="ui top attached block header">
 
                                 <div class="ui items">
                                     <div class="item">
-
                                         <h3 class="mb-0">
                                             <button class="mini ui icon button"
                                                 v-bind:class="{ green: milestone.visible }" @click="toggleMilestone(i)"
@@ -312,14 +432,6 @@
                             </div>
                         </div>
                     </template>
-                </template>
-
-                <template v-else>
-
-                    <div class="ui error message">
-                        <h3 class="header">No milestones or projects loaded.</h3>
-                    </div>
-
                 </template>
             </div>
 
