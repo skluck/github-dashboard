@@ -53,6 +53,8 @@
             .clr-green { color: #21ba45; }
             .clr-red { color: #db2828; }
             .ui.micro.image { width: 22px; font-size: .65em; margin-top: -.35em; }
+
+            .ui.mini.circular.fixed-label { width: 2.25em !important; }
         </style>
     </head>
 
@@ -189,22 +191,27 @@
 
                                     <div class="ui mini horizontal list mt-0">
                                         <div class="item">
-                                            <span class="ui mini circular label" v-bind:class="meta.pullrequests.length > 5 ? 'green outline' : 'red'">{{ meta.pullrequests.length }}</span>
+                                            <span class="ui mini circular label fixed-label" v-bind:class="activityColor(meta.submitted.length)">{{ meta.submitted.length }}</span>
+                                            Submitted
+                                        </div>
+
+                                        <div class="item">
+                                            <span class="ui mini circular label fixed-label" v-bind:class="activityColor(meta.reviewed.length)">{{ meta.reviewed.length }}</span>
                                             Reviews
                                         </div>
 
                                         <div class="item">
-                                            <span class="ui mini circular label" v-bind:class="meta.approved.length > 5 ? 'green outline' : 'red'">{{ meta.approved.length }}</span>
+                                            <span class="ui mini circular label fixed-label" v-bind:class="activityColor(meta.approved.length)">{{ meta.approved.length }}</span>
                                             Approved
                                         </div>
 
                                         <div class="item">
-                                            <span class="ui mini circular label" v-bind:class="meta.changes_requested.length > 5 ? 'green outline' : 'red'">{{ meta.changes_requested.length }}</span>
+                                            <span class="ui mini circular label fixed-label" v-bind:class="activityColor(meta.changes_requested.length)">{{ meta.changes_requested.length }}</span>
                                             Changes Requested
                                         </div>
 
                                         <div class="item">
-                                            <span class="ui mini circular label" v-bind:class="meta.commented.length > 5 ? 'green outline' : 'red'">{{ meta.commented.length }}</span>
+                                            <span class="ui mini circular label fixed-label" v-bind:class="activityColor(meta.commented.length)">{{ meta.commented.length }}</span>
                                             Comments
                                         </div>
                                     </div>
