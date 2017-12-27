@@ -38,6 +38,8 @@
             .mt-10 { margin-top: 1em !important; }
             .ml-4 { margin-left: 2em !important; }
             .ml-6 { margin-left: 3em !important; }
+
+            .mt-0 { margin-top: 0 !important; }
             .mb-0 { margin-bottom: 0 !important; }
 
             .app-content { width: calc(100% - 260px); padding: 1em; }
@@ -167,7 +169,12 @@
 
                     <div class="ui segments">
                         <div class="ui top attached block header">
-                            <h3 class="mb-0">Review Activity</h3>
+                            <h3 class="mb-0">
+                                Review Activity
+                                <div class="ui basic label">
+                                    {{ pullrequests.open.pullrequests.length + pullrequests.closed.pullrequests.length }} total PRs
+                                </div>
+                            </h3>
                         </div>
 
                         <div class="ui clearing segment">
@@ -175,10 +182,12 @@
                                 <div class="item" v-for="(meta, user) in reviews">
 
                                     <div class="left floated content">
-                                        <h4 class="mb-0">{{ user }}</h4>
+                                        <h4 class="mb-0">
+                                            <img class="ui micro avatar image" :src="meta.user.avatar_url" :alt="meta.user.login"> {{ user }}
+                                        </h4>
                                     </div>
 
-                                    <div class="ui mini horizontal list">
+                                    <div class="ui mini horizontal list mt-0">
                                         <div class="item">
                                             <span class="ui mini circular label" v-bind:class="meta.pullrequests.length > 5 ? 'green outline' : 'red'">{{ meta.pullrequests.length }}</span>
                                             Reviews
