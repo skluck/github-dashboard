@@ -433,9 +433,14 @@ new Vue({
             }
         },
         appendReviewsMetadata: function(pr, reviews) {
+            let pr_username = pr.user.login.toLowerCase();
+
             for (review of reviews) {
-                if (!this.reviews[review.user.login]) {
-                    this.reviews[review.user.login] = {
+                let username = review.user.login.toLowerCase();
+
+                if (!this.reviews[username]) {
+                    this.reviews[username] = {
+                        user: review.user,
                         pullrequests: [],
 
                         approved: [],
@@ -445,22 +450,22 @@ new Vue({
                 }
 
                 // Dont record review stats if its users own pr
-                if (pr.user.login == review.user.login) {
+                if (pr_username == username) {
                     continue;
                 }
 
-                if (!this.reviews[review.user.login].pullrequests.includes(review.pull_request_url)) {
-                    this.reviews[review.user.login].pullrequests.push(review.pull_request_url);
+                if (!this.reviews[username].pullrequests.includes(review.pull_request_url)) {
+                    this.reviews[username].pullrequests.push(review.pull_request_url);
                 }
 
                 if (review.state === 'APPROVED') {
-                    this.reviews[review.user.login].approved.push(review.body);
+                    this.reviews[username].approved.push(review.body);
 
                 } else if (review.state === 'CHANGES_REQUESTED') {
-                    this.reviews[review.user.login].changes_requested.push(review.body);
+                    this.reviews[username].changes_requested.push(review.body);
 
                 } else if (review.state === 'COMMENTED') {
-                    this.reviews[review.user.login].commented.push(review.pull_request_url);
+                    this.reviews[username].commented.push(review.pull_request_url);
                 }
             }
         },
