@@ -49,22 +49,35 @@ new Vue({
 
         github_base_url: 'https://api.github.com',
         enterprise_base_url: '',
+        github_token: '',
 
         gh: null,
         ghe: null,
         default_max: 6,
+        max_pr_history: 4,
 
         github_repos: [],
         enterprise_repos: [],
 
         milestones: [],
         projects: [],
-        pullrequests: [],
+        pullrequests: {
+            open: {
+                visible: true,
+                pullrequests: [],
+            },
+            closed: {
+                visible: true,
+                pullrequests: []
+            },
+        },
+        reviews: {}
     },
     created: function() {
         let enterprise_url = store.get('enterprise_url');
         let enterprise_repos = store.get('enterprise_repos');
         let github_repos = store.get('github_repos');
+        let github_token = store.get('github_token');
 
         if (enterprise_url) {
             this.enterprise_base_url = enterprise_url;
@@ -76,6 +89,10 @@ new Vue({
 
         if (github_repos) {
             this.github_repos = github_repos;
+        }
+
+        if (github_token) {
+            this.github_token = github_token;
         }
 
         let max_gh = (this.github_repos.length > this.default_max) ? this.github_repos.length : this.default_max;
@@ -111,9 +128,11 @@ new Vue({
         load: function() {
             store.set('enterprise_url', this.enterprise_base_url);
             store.set('enterprise_repos', this.enterprise_repos);
+
+            store.set('github_token', this.github_token);
             store.set('github_repos', this.github_repos);
 
-            this.gh = new GitHub({/*token: 'MY_OAUTH_TOKEN'*/}, this.github_base_url);
+            this.gh = new GitHub({token: this.github_token}, this.github_base_url);
             this.ghe = new GitHub({/*token: 'MY_OAUTH_TOKEN'*/}, this.enterprise_base_url);
 
             for (i in this.github_repos) {
@@ -170,7 +189,6 @@ new Vue({
         },
         loadMilestones: function() {
             this.load();
-            this.loadPullRequests();
 
             this.milestones = [];
             let milestone_promises = [];
@@ -197,15 +215,36 @@ new Vue({
             this.resolveMilestones(milestone_promises);
         },
         loadPullRequests: function() {
-            this.pullrequests = [];
-            let pr_promises = [];
+            this.load();
+
+            this.pullrequests = {
+                open: {
+                    visible: true,
+                    pullrequests: []
+                },
+                closed: {
+                    visible: true,
+                    pullrequests: []
+                },
+            };
+            this.reviews = {};
+
+            let open_promises = [];
+            let closed_promises = [];
 
             // Grab github.com repos
             for (meta of this.github_repos) {
                 if (meta.owner.length == 0 || meta.repo.length == 0) continue;
 
-                let ghRepo = this.gh.getRepo(meta.owner, meta.repo);
-                pr_promises.push(ghRepo.listPullRequests({state: 'open'}));
+                let gh_repo = this.gh.getRepo(meta.owner, meta.repo);
+
+                let open = gh_repo.listPullRequests({state: 'open'})
+                    .then(this.resolvePRDetails(gh_repo));
+                let closed = gh_repo.listPullRequests({state: 'closed', 'sort': 'created', 'direction': 'desc'})
+                    .then(this.resolvePRDetails(gh_repo, this.max_pr_history));
+
+                open_promises.push(open);
+                closed_promises.push(closed);
             }
 
             // Grab github enterprise repos
@@ -213,21 +252,29 @@ new Vue({
                 for (meta of this.enterprise_repos) {
                     if (meta.owner.length == 0 || meta.repo.length == 0) continue;
 
-                    let ghRepo = this.ghe.getRepo(meta.owner, meta.repo);
-                    pr_promises.push(ghRepo.listPullRequests({state: 'open'}));
+                    let ghe_repo = this.ghe.getRepo(meta.owner, meta.repo);
+
+                    let open = ghe_repo.listPullRequests({state: 'open'})
+                        .then(this.resolvePRDetails(ghe_repo));
+                    let closed = ghe_repo.listPullRequests({state: 'closed', 'sort': 'created', 'direction': 'desc'})
+                        .then(this.resolvePRDetails(ghe_repo, this.max_pr_history));
+
+                    open_promises.push(open);
+                    closed_promises.push(closed);
                 }
             }
 
             // Resolve promises
-            this.resolvePullRequests(pr_promises);
+            this.resolvePullRequests(open_promises, 'open');
+            this.resolvePullRequests(closed_promises, 'closed');
         },
 
         resolveProjects: function(promises) {
             let self = this;
 
-            $.combinator(promises)
-            .then(function(responses) {
-                responses.forEach(function(response) {
+            Promise.all(promises)
+            .then((responses) => {
+                responses.forEach((response) => {
                     let projects = response.data
                     if (!Array.isArray(response.data)) {
                         projects = [projects];
@@ -243,9 +290,9 @@ new Vue({
         resolveMilestones: function(promises) {
             let self = this;
 
-            $.combinator(promises)
-            .then(function(responses) {
-                responses.forEach(function(response) {
+            Promise.all(promises)
+            .then((responses) => {
+                responses.forEach((response) => {
                     let milestones = response.data
                     if (!Array.isArray(response.data)) {
                         milestones = [milestones];
@@ -257,7 +304,7 @@ new Vue({
                     }
                 });
 
-                self.milestones = self.milestones.sort(function(a, b) {
+                self.milestones = self.milestones.sort((a, b) => {
                     let aDue = new Date(a.m.due_on).getTime();
                     let bDue = new Date(b.m.due_on).getTime();
 
@@ -267,34 +314,67 @@ new Vue({
                 });
             });
         },
-        resolvePullRequests: function(promises) {
+        resolvePullRequests: function(promises, type) {
             let self = this;
 
-            $.combinator(promises)
-            .then(function(responses) {
-                responses.forEach(function(response) {
-                    let prs = response.data;
-
-                    if (!Array.isArray(response.data)) {
-                        prs = [prs];
-                    }
-
-                    for (let pr of prs) {
-                        meta = self.findMeta(pr.url);
-                        self.addPullRequest(meta, pr);
+            Promise.all(promises)
+            .then((responses) => {
+                responses.forEach((responses) => {
+                    for (let r of responses) {
+                        let data = r.data;
+                        if (data.url === undefined) {
+                            // is a review
+                            self.addPullRequestReviews(type, r.pr_url, r.data);
+                        } else {
+                            // is a pr
+                            self.addPullRequest(type, data);
+                        }
                     }
                 });
 
-                self.pullrequests = self.pullrequests.sort(function(a, b) {
+                self.pullrequests[type].pullrequests = self.pullrequests[type].pullrequests.sort((a, b) => {
                     let aUpdated = new Date(a.pr.updated_at).getTime();
                     let bUpdated = new Date(b.pr.updated_at).getTime();
 
-                    if (aUpdated < bUpdated) return -1;
-                    if (aUpdated > bUpdated) return 1;
+                    if (aUpdated < bUpdated) return 1;
+                    if (aUpdated > bUpdated) return -1;
                     return 0;
                 });
             });
         },
+        resolvePRDetails: function(client, limit) {
+            let self = this;
+
+            limit = limit || 50;
+            return (r) => {
+                let promises = [];
+                let current = 0;
+
+                if (r.data.length) {
+                    for (pr of r.data) {
+                        current++;
+                        promises.push(client.getPullRequest(pr.number));
+
+                        let pr_url = pr.url;
+                        let reviews = client.
+                            _request('GET', `/repos/${client.__fullname}/pulls/${pr.number}/reviews`)
+                            .then((v) => {
+                                return {
+                                    pr_url: pr_url,
+                                    data: v.data
+                                };
+                            });
+
+                        promises.push(reviews);
+
+                        if (current > limit) break;
+                    }
+                }
+
+                return Promise.all(promises);
+            };
+        },
+
         addProject: function(meta, project) {
             meta = this.findMeta(project.url);
             if (!meta) return;
@@ -329,7 +409,7 @@ new Vue({
 
             this.milestones = this.milestones.concat(m);
         },
-        addPullRequest: function(meta, pr) {
+        addPullRequest: function(type, pr) {
             meta = this.findMeta(pr.url);
             if (!meta) return;
 
@@ -337,7 +417,52 @@ new Vue({
             if (this.oldest.getTime() > prTime) return;
 
             var p = this.buildPR(meta, pr);
-            this.pullrequests = this.pullrequests.concat(p);
+            this.pullrequests[type].pullrequests = this.pullrequests[type].pullrequests.concat(p);
+        },
+        addPullRequestReviews: function(type, pr_url, reviews) {
+            if (reviews.length === 0) {
+                return;
+            }
+
+            for (pr of this.pullrequests[type].pullrequests) {
+                if (pr_url == pr.pr.url) {
+                    pr.reviews = reviews;
+                    this.appendReviewsMetadata(pr.pr, reviews);
+                    break;
+                }
+            }
+        },
+        appendReviewsMetadata: function(pr, reviews) {
+            for (review of reviews) {
+                if (!this.reviews[review.user.login]) {
+                    this.reviews[review.user.login] = {
+                        pullrequests: [],
+
+                        approved: [],
+                        changes_requested: [],
+                        commented: []
+                    };
+                }
+
+                // Dont record review stats if its users own pr
+                if (pr.user.login == review.user.login) {
+                    continue;
+                }
+
+                if (!this.reviews[review.user.login].pullrequests.includes(review.pull_request_url)) {
+                    this.reviews[review.user.login].pullrequests.push(review.pull_request_url);
+                }
+
+                if (review.state === 'APPROVED') {
+                    this.reviews[review.user.login].approved.push(review.body);
+
+                } else if (review.state === 'CHANGES_REQUESTED') {
+                    this.reviews[review.user.login].changes_requested.push(review.body);
+
+                } else if (review.state === 'COMMENTED') {
+                    this.reviews[review.user.login].commented.push(review.pull_request_url);
+                }
+            }
         },
 
         buildProject: function(meta, project) {
@@ -363,8 +488,7 @@ new Vue({
                 owner: meta ? meta.owner : null,
                 repo: meta ? meta.repo : null,
                 pr: pr,
-                total_comments: parseInt(pr.comments) + parseInt(pr.review_comments),
-                visible: true
+                reviews: []
             };
         },
         isGH: function(url) {
@@ -396,6 +520,20 @@ new Vue({
         },
 
         // Used from templates
+        isNothingLoaded: function() {
+            return (
+                this.milestones.length === 0 &&
+                this.projects.length === 0 &&
+                this.pullrequests.open.pullrequests.length === 0 &&
+                this.pullrequests.closed.pullrequests.length === 0
+            );
+        },
+        hasAnyPullRequests: function() {
+            return (
+                this.pullrequests.open.pullrequests.length > 0 ||
+                this.pullrequests.closed.pullrequests.length > 0
+            );
+        },
 
         isRecent: function(d) {
             let dTime = new Date(d);
@@ -422,7 +560,36 @@ new Vue({
         },
         toggleMilestone: function(i) {
             this.milestones[i].visible = !this.milestones[i].visible;
-        }
+        },
+        togglePullRequests: function(i) {
+            this.pullrequests[i].visible = !this.pullrequests[i].visible;
+        },
+        hideAllItems: function() {
+            for (let proj of this.projects) {
+                proj.visible = false;
+            }
 
+            for (let milestone of this.milestones) {
+                milestone.visible = false;
+            }
+
+            this.pullrequests.open.visible = false;
+            this.pullrequests.closed.visible = false;
+        },
+        clearAllItems: function() {
+            this.milestones = [];
+            this.projects = [];
+            this.pullrequests = {
+                open: {
+                    visible: true,
+                    pullrequests: []
+                },
+                closed: {
+                    visible: true,
+                    pullrequests: []
+                },
+            };
+            this.reviews = {};
+        }
     }
 });
