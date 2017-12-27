@@ -5,21 +5,6 @@ $.url_param = function(name, url) {
     return results[1] || null;
 };
 
-$.combinator = function (promises) {
-    var accumulator = [];
-    var ready = Promise.resolve(null);
-
-    promises.forEach(function (promise, i) {
-        ready = ready.then(function () {
-            return promise;
-        }).then(function (value) {
-            accumulator[i] = value;
-        });
-    });
-
-    return ready.then(function () { return accumulator; });
-}
-
 $.local_date = function (value) {
     if (value.length === 0) return '';
     if (typeof value !== 'string') return '';
@@ -387,8 +372,8 @@ new Vue({
             meta = this.findMeta(milestone.url);
             if (!meta) return;
 
-            let milestoneTime = new Date(milestone.due_on).getTime();
-            if (this.oldest.getTime() > milestoneTime) return;
+            // let milestoneTime = new Date(milestone.due_on).getTime();
+            // if (this.oldest.getTime() > milestoneTime) return;
 
             let self = this;
 
@@ -413,11 +398,21 @@ new Vue({
             meta = this.findMeta(pr.url);
             if (!meta) return;
 
-            let prTime = new Date(pr.updated_at).getTime();
-            if (this.oldest.getTime() > prTime) return;
+            let username = pr.user.login.toLowerCase();;
+
+            if (!this.reviews[username]) {
+                this.reviews[username] = this.buildReview(pr.user);
+            }
+            if (!this.reviews[username].submitted.includes(pr.url)) {
+            console.log(username +': '+ pr.url);
+                this.reviews[username].submitted.push(pr.url);
+            }
+
+            // let prTime = new Date(pr.updated_at).getTime();
+            // if (this.oldest.getTime() > prTime) return;
 
             var p = this.buildPR(meta, pr);
-            this.pullrequests[type].pullrequests = this.pullrequests[type].pullrequests.concat(p);
+            this.pullrequests[type].pullrequests.push(p);
         },
         addPullRequestReviews: function(type, pr_url, reviews) {
             if (reviews.length === 0) {
@@ -439,14 +434,7 @@ new Vue({
                 let username = review.user.login.toLowerCase();
 
                 if (!this.reviews[username]) {
-                    this.reviews[username] = {
-                        user: review.user,
-                        pullrequests: [],
-
-                        approved: [],
-                        changes_requested: [],
-                        commented: []
-                    };
+                    this.reviews[username] = this.buildReview(review.user);
                 }
 
                 // Dont record review stats if its users own pr
@@ -454,8 +442,8 @@ new Vue({
                     continue;
                 }
 
-                if (!this.reviews[username].pullrequests.includes(review.pull_request_url)) {
-                    this.reviews[username].pullrequests.push(review.pull_request_url);
+                if (!this.reviews[username].reviewed.includes(review.pull_request_url)) {
+                    this.reviews[username].reviewed.push(review.pull_request_url);
                 }
 
                 if (review.state === 'APPROVED') {
@@ -496,6 +484,18 @@ new Vue({
                 reviews: []
             };
         },
+        buildReview: function(user) {
+            return {
+                user: user,
+                submitted: [],
+                reviewed: [],
+
+                approved: [],
+                changes_requested: [],
+                commented: []
+            };
+        },
+
         isGH: function(url) {
             return url.includes(this.github_base_url);
         },
@@ -543,6 +543,22 @@ new Vue({
         isRecent: function(d) {
             let dTime = new Date(d);
             return (this.recent.getTime() < dTime.getTime());
+        },
+
+        activityColor: function(length) {
+            if (length > 8) {
+                return 'green';
+            }
+
+            if (length > 4) {
+                return 'orange';
+            }
+
+            if (length > 0) {
+                return 'red';
+            }
+
+            return 'black';
         },
 
         repoEnabled: function(itemURL) {
