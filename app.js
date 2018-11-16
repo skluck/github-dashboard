@@ -6,7 +6,7 @@ $.url_param = function(name, url) {
 };
 
 $.local_date = function (value) {
-    if (value === undefined) return '';
+    if (value === undefined || value === null) return '';
     if (value.length === 0) return '';
     if (typeof value !== 'string') return '';
 
